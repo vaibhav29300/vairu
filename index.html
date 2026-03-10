@@ -1351,9 +1351,9 @@ const FIREBASE_CONFIG = {
   /* ---------- Screen transitions ---------- */
   function showScreen(name) {
     currentScreen = name;
-    // Username screen is an absolute overlay
-    usernameScreen.classList.toggle('hidden', name !== 'username');
-    // List vs chat (both sit in the flex column)
+    // Username screen: hide completely when not active
+    usernameScreen.style.display   = name === 'username' ? 'flex' : 'none';
+    // List vs chat
     usersListScreen.style.display  = name === 'list' ? 'flex' : 'none';
     messagesWrap.style.display     = name === 'chat' ? 'flex' : 'none';
     inputBar.style.display         = name === 'chat' ? 'flex' : 'none';
@@ -1441,7 +1441,10 @@ const FIREBASE_CONFIG = {
       });
       usersOnlineCount.textContent = onlineCount > 1 ? (onlineCount - 1) + ' online' : '';
     };
-    ref.on('value', handler);
+    ref.on('value', handler, err => {
+      console.error('Users list read failed:', err);
+      showToast('Cannot load users — check Firebase rules');
+    });
     usersListOff = () => ref.off('value', handler);
   }
 
