@@ -1213,6 +1213,8 @@ const FIREBASE_CONFIG = {
       bubble.appendChild(wrapper);
     }
 
+    group.appendChild(bubble);
+
     // Only show timestamp if last message was > 5 minutes ago
     const lastGroup = typingIndicator.previousElementSibling;
     const lastTs = lastGroup && lastGroup.dataset.ts ? Number(lastGroup.dataset.ts) : 0;
