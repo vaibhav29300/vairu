@@ -253,8 +253,19 @@
     .msg-time {
       font-size: 11px;
       color: var(--text2);
-      margin: 3px 4px 8px;
+      margin: 3px 4px 2px;
     }
+    .seen-indicator {
+      font-size: 10px;
+      color: var(--accent);
+      margin: 0 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .seen-indicator.visible { opacity: 1; }
 
     /* ===== IMAGE BUBBLE ===== */
     .bubble.image-bubble { padding: 4px; cursor: pointer; }
@@ -1142,6 +1153,7 @@ const FIREBASE_CONFIG = {
 
     const group = document.createElement('div');
     group.className = 'msg-group ' + (msg.from === 'me' ? 'sent' : 'recv');
+    if (msg.from === 'me') group.dataset.ts = msg.ts;
 
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
@@ -1207,6 +1219,12 @@ const FIREBASE_CONFIG = {
 
     group.appendChild(bubble);
     group.appendChild(timeEl);
+    if (msg.from === 'me') {
+      const seenEl = document.createElement('div');
+      seenEl.className = 'seen-indicator';
+      seenEl.innerHTML = '<i class="fa-solid fa-check-double"></i> Seen';
+      group.appendChild(seenEl);
+    }
 
     // Insert before typing indicator
     messagesWrap.insertBefore(group, typingIndicator);
@@ -1501,13 +1519,45 @@ const FIREBASE_CONFIG = {
   }
   backBtn.addEventListener('click', backToList);
 
+  /* ---------- Seen receipts ---------- */
+  function markAsSeen() {
+    if (!fbDb || !chatId || !myId) return;
+    fbDb.ref('chats/' + chatId + '/seen/' + myId).set(firebase.database.ServerValue.TIMESTAMP);
+  }
+
+  function updateSeenUI(seenTs) {
+    // Find all sent message groups with a timestamp
+    const sentGroups = Array.from(messagesWrap.querySelectorAll('.msg-group.sent[data-ts]'));
+    // Remove 'visible' from all seen indicators first
+    sentGroups.forEach(g => {
+      const ind = g.querySelector('.seen-indicator');
+      if (ind) ind.classList.remove('visible');
+    });
+    // Show 'Seen' only on the LAST message whose ts <= partner's seenTs
+    const seenGroups = sentGroups.filter(g => Number(g.dataset.ts) <= seenTs);
+    if (seenGroups.length > 0) {
+      const last = seenGroups[seenGroups.length - 1];
+      const ind = last.querySelector('.seen-indicator');
+      if (ind) ind.classList.add('visible');
+    }
+  }
+
+  // Mark seen when tab regains focus while chat is open
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentScreen === 'chat') markAsSeen();
+  });
+
   /* ---------- Firebase Realtime Listeners ---------- */
 
   function subscribeToChat(id) {
     let historyLoaded = false;
     const msgsRef = fbDb.ref('chats/' + id + '/messages');
 
-    msgsRef.once('value', () => { historyLoaded = true; checkEmpty(); });
+    msgsRef.once('value', () => {
+      historyLoaded = true;
+      checkEmpty();
+      markAsSeen(); // mark all history as seen on open
+    });
 
     const msgHandler = snap => {
       const d = snap.val();
@@ -1516,10 +1566,20 @@ const FIREBASE_CONFIG = {
       renderMessage(msg);
       if (historyLoaded && d.from !== myId) {
         sendNotification(msg.type === 'text' ? msg.content : msg.type === 'image' ? '📷 Image' : '🎙️ Voice message');
+        markAsSeen(); // mark incoming message as seen immediately
       }
     };
     msgsRef.on('child_added', msgHandler);
     chatListeners.push({ ref: msgsRef, event: 'child_added', handler: msgHandler });
+
+    // Listen to partner's seen timestamp → update seen UI on our sent messages
+    const seenRef = fbDb.ref('chats/' + id + '/seen/' + partnerUid);
+    const seenHandler = snap => {
+      const ts = snap.val();
+      if (ts) updateSeenUI(ts);
+    };
+    seenRef.on('value', seenHandler);
+    chatListeners.push({ ref: seenRef, event: 'value', handler: seenHandler });
 
     const typingRef = fbDb.ref('chats/' + id + '/typing');
     const typingHandler = snap => {
