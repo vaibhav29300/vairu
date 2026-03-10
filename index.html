@@ -9,7 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- Firebase compat SDK (works as regular global scripts, no bundler needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <style>
     /* ===== CSS VARIABLES ===== */
     :root {
@@ -644,7 +647,7 @@
 
       <button class="danger-btn" id="clear-chat-btn"><i class="fa-solid fa-trash"></i> Clear Chat History</button>
     </div>
-    <div class="settings-footer">VAIRU v1.1 · Peer-to-peer, no servers 💕<br/>Your messages never leave your devices</div>
+    <div class="settings-footer">VAIRU v2.0 · Firebase · Just the two of you 💕<br/>Messages synced & stored securely in the cloud</div>
   </div>
 </div>
 
@@ -659,9 +662,20 @@
 
 <script>
 // ============================================================
-//  VAIRU — P2P Chat App
-//  PeerJS + IndexedDB + WebRTC
+//  VAIRU — Chat App  (Firebase Realtime Database)
 // ============================================================
+
+// ⚠️  FILL IN YOUR FIREBASE PROJECT CONFIG BELOW
+//     Get it from: console.firebase.google.com → Project settings → Your apps → SDK config
+const FIREBASE_CONFIG = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
+};
 
 (function () {
   'use strict';
@@ -693,83 +707,24 @@
   const copyLinkItem = $('copy-link-item');
 
   /* ---------- State ---------- */
-  let peer = null;           // PeerJS instance
-  let conn = null;           // DataConnection
-  let myId = '';             // Our PeerJS ID (room code)
-  let hostId = '';           // Host's ID (from URL hash)
+  let fbApp  = null;   // Firebase app instance
+  let fbDb   = null;   // Firebase Realtime Database
+  let fbAuth = null;   // Firebase Auth
+  let myId   = '';     // Our Firebase UID
+  let hostId = '';     // Room ID (host's UID from URL hash)
   let isHost = false;
-  let typingTimeout = null;  // debounce for typing events
+  let typingTimeout     = null;  // debounce for typing events
   let peerTypingTimeout = null;
   let mediaRecorder = null;
-  let audioChunks = [];
-  let recInterval = null;
-  let recSeconds = 0;
+  let audioChunks   = [];
+  let recInterval   = null;
+  let recSeconds    = 0;
   let notificationsEnabled = false;
-
-  /* ---------- IndexedDB ---------- */
-  const DB_NAME = 'vairu-chat';
-  const DB_VERSION = 1;
-  const STORE = 'messages';
-  let db = null;
-
-  function openDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = e => {
-        const d = e.target.result;
-        if (!d.objectStoreNames.contains(STORE)) {
-          const store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-          store.createIndex('roomId', 'roomId', { unique: false });
-          store.createIndex('ts', 'ts', { unique: false });
-        }
-      };
-      req.onsuccess = e => { db = e.target.result; resolve(db); };
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  function saveMsg(msg) {
-    if (!db) return;
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).add(msg);
-  }
-
-  function loadMsgs(roomId) {
-    return new Promise((resolve) => {
-      if (!db) return resolve([]);
-      const tx = db.transaction(STORE, 'readonly');
-      const idx = tx.objectStore(STORE).index('roomId');
-      const req = idx.getAll(roomId);
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => resolve([]);
-    });
-  }
-
-  function clearMsgs(roomId) {
-    return new Promise((resolve) => {
-      if (!db) return resolve();
-      const tx = db.transaction(STORE, 'readwrite');
-      const idx = tx.objectStore(STORE).index('roomId');
-      const req = idx.openCursor(IDBKeyRange.only(roomId));
-      req.onsuccess = e => {
-        const cursor = e.target.result;
-        if (cursor) { cursor.delete(); cursor.continue(); }
-        else resolve();
-      };
-      req.onerror = () => resolve();
-    });
-  }
 
   /* ---------- Room / URL ---------- */
   function getRoomId() {
     const hash = location.hash.replace('#', '').trim();
     return hash || null;
-  }
-
-  function generateId(len = 8) {
-    const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
-    return Array.from(crypto.getRandomValues(new Uint8Array(len)))
-      .map(b => chars[b % chars.length]).join('');
   }
 
   function getRoomLink() {
@@ -876,9 +831,8 @@
   }
 
   function sendBgToPeer(dataUrl, opacity) {
-    if (conn && conn.open) {
-      try { conn.send({ event: 'bg-update', data: { dataUrl: dataUrl || null, opacity } }); } catch (_) {}
-    }
+    if (!fbDb || !hostId) return;
+    fbDb.ref('rooms/' + hostId + '/bg').set({ dataUrl: dataUrl || null, opacity });
   }
 
   // Load saved bg on start
@@ -1007,8 +961,7 @@
   /* ---------- Clear Chat ---------- */
   clearChatBtn.addEventListener('click', async () => {
     if (!confirm('Clear all chat history? This cannot be undone.')) return;
-    const roomId = myId || hostId;
-    if (roomId) await clearMsgs(roomId);
+    if (fbDb && hostId) await fbDb.ref('rooms/' + hostId + '/messages').remove();
     // Remove all rendered bubbles
     Array.from(messagesWrap.querySelectorAll('.msg-group')).forEach(el => el.remove());
     checkEmpty();
@@ -1030,11 +983,7 @@
   }
 
   /* ---------- Render message ---------- */
-  function renderMessage(msg, save = true) {
-    const roomId = myId || hostId;
-    if (save) {
-      saveMsg({ ...msg, roomId });
-    }
+  function renderMessage(msg) {
     emptyState.style.display = 'none';
 
     const group = document.createElement('div');
@@ -1119,23 +1068,12 @@
     messagesWrap.scrollTop = messagesWrap.scrollHeight;
   }
 
-  /* ---------- Load history ---------- */
-  async function loadHistory(roomId) {
-    const msgs = await loadMsgs(roomId);
-    if (msgs.length === 0) { checkEmpty(); return; }
-    msgs.sort((a, b) => a.ts - b.ts);
-    msgs.forEach(m => renderMessage(m, false));
-  }
-
   /* ---------- Send message ---------- */
   function sendMessage(type, content) {
-    if (!conn || conn.open === false) {
-      showToast('Not connected yet');
-      return;
-    }
-    const msg = { type, content, from: 'me', ts: Date.now() };
-    conn.send({ event: 'message', data: { type, content, ts: msg.ts } });
-    renderMessage(msg, true);
+    if (!fbDb || !hostId) { showToast('Not ready yet'); return; }
+    fbDb.ref('rooms/' + hostId + '/messages').push({
+      type, content, from: myId, ts: firebase.database.ServerValue.TIMESTAMP
+    });
   }
 
   /* ---------- Text send ---------- */
@@ -1156,8 +1094,8 @@
   /* ---------- Typing indicator ---------- */
   msgInput.addEventListener('input', () => {
     autoResize(msgInput);
-    if (conn && conn.open) {
-      conn.send({ event: 'typing', data: true });
+    if (fbDb && myId && hostId) {
+      fbDb.ref('rooms/' + hostId + '/typing/' + myId).set(true);
       clearTimeout(typingTimeout);
       typingTimeout = setTimeout(stopTyping, 2000);
     }
@@ -1165,7 +1103,7 @@
 
   function stopTyping() {
     clearTimeout(typingTimeout);
-    if (conn && conn.open) conn.send({ event: 'typing', data: false });
+    if (fbDb && myId && hostId) fbDb.ref('rooms/' + hostId + '/typing/' + myId).set(false);
   }
 
   function autoResize(el) {
@@ -1256,210 +1194,100 @@
   micBtn.addEventListener('touchstart', e => { e.preventDefault(); startRec(); });
   micBtn.addEventListener('touchend', e => { e.preventDefault(); stopRec(); });
 
-  /* ---------- PeerJS ---------- */
+  /* ---------- Firebase Realtime Listeners ---------- */
 
-  // Multiple STUN servers + free TURN relay for symmetric-NAT traversal.
-  // TURN traffic is DTLS-encrypted — the relay server cannot read messages.
-  const ICE_SERVERS = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'turn:openrelay.metered.ca:80',       username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443',      username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-  ];
+  function subscribeToRoom(roomId) {
+    // Load history first via once('value'), then subscribe to new messages only
+    let historyLoaded = false;
+    const msgsRef = fbDb.ref('rooms/' + roomId + '/messages');
 
-  let hostIdRetries = 0;       // how many times we've retried the same host ID
-  let guestRetryCount = 0;     // for exponential backoff on guest reconnects
-  let guestRetryTimer = null;
-  let keepAliveInterval = null;
+    // Mark when all existing data has been delivered so we can suppress replay notifications
+    msgsRef.once('value', () => { historyLoaded = true; checkEmpty(); });
 
-  function scheduleGuestReconnect() {
-    clearTimeout(guestRetryTimer);
-    // Backoff: 3s → 5s → 8s → 12s → 18s, capped at 20s — retries indefinitely
-    const delay = Math.min(3000 * Math.pow(1.5, guestRetryCount), 20000);
-    guestRetryCount++;
-    setStatus('disconnected', `Will reconnect in ${Math.round(delay / 1000)}s…`);
-    guestRetryTimer = setTimeout(() => {
-      if (conn && conn.open) return; // already reconnected, skip
-      connectToPeer(hostId);
-    }, delay);
-  }
-
-  function initPeer(id) {
-    // Always destroy any existing instance first to avoid duplicate registrations
-    if (peer && !peer.destroyed) { try { peer.destroy(); } catch (_) {} }
-
-    peer = new Peer(id, {
-      debug: 0,
-      config: { iceServers: ICE_SERVERS, iceCandidatePoolSize: 4 },
+    // onChildAdded fires for existing messages first, then new arrivals
+    msgsRef.on('child_added', snap => {
+      const d = snap.val();
+      if (!d) return;
+      const msg = {
+        type:    d.type,
+        content: d.content,
+        from:    d.from === myId ? 'me' : 'them',
+        ts:      d.ts || Date.now()
+      };
+      renderMessage(msg);
+      // Only notify for incoming messages (not our own) after initial history replay
+      if (historyLoaded && d.from !== myId) {
+        sendNotification(msg.type === 'text' ? msg.content : msg.type === 'image' ? '📷 Image' : '🎙️ Voice message');
+      }
     });
 
-    peer.on('open', peerId => {
-      myId = peerId;
-      hostIdRetries = 0; // reset retry counter on successful open
-      if (isHost) localStorage.setItem('vairu-host-id', peerId);
-      history.replaceState(null, '', '#' + peerId);
+    // Typing indicator
+    fbDb.ref('rooms/' + roomId + '/typing').on('value', snap => {
+      const typing = snap.val() || {};
+      const peerTyping = Object.entries(typing).some(([uid, val]) => uid !== myId && val === true);
+      showPeerTyping(peerTyping);
+    });
 
-      if (isHost) {
-        setStatus('connecting', 'Waiting for your person… 💌');
+    // Background sync
+    fbDb.ref('rooms/' + roomId + '/bg').on('value', snap => {
+      const bg = snap.val();
+      if (!bg) return;
+      applyBg(bg.dataUrl || null, bg.opacity != null ? bg.opacity : 50, true);
+    });
+
+    // Presence: track who is online
+    const myPresenceRef = fbDb.ref('rooms/' + roomId + '/presence/' + myId);
+    myPresenceRef.set({ online: true, ts: firebase.database.ServerValue.TIMESTAMP });
+    myPresenceRef.onDisconnect().set({ online: false, ts: firebase.database.ServerValue.TIMESTAMP });
+
+    fbDb.ref('rooms/' + roomId + '/presence').on('value', snap => {
+      const presence = snap.val() || {};
+      const peerOnline = Object.entries(presence).some(([uid, v]) => uid !== myId && v && v.online);
+      if (peerOnline) {
+        setStatus('connected', '💕 Connected');
       } else {
-        guestRetryCount = 0; // reset backoff on fresh peer open
-        setStatus('connecting', 'Joining…');
-        connectToPeer(hostId);
+        setStatus('connecting', isHost ? 'Waiting for your person… 💌' : 'Waiting for them to come online…');
       }
     });
 
-    peer.on('connection', incoming => {
-      setupConnection(incoming);
-    });
-
-    peer.on('error', err => {
-      console.warn('PeerJS error:', err.type, err.message);
-      if (err.type === 'unavailable-id') {
-        // The broker still has this ID registered from the previous session
-        // (takes up to 60 s to expire). Keep retrying the SAME ID — never generate
-        // a new one, so the room link stays valid forever.
-        hostIdRetries++;
-        const wait = Math.min(3000 * hostIdRetries, 12000); // 3s, 6s, 9s, 12s, 12s, …
-        const secs = Math.round(wait / 1000);
-        setStatus('connecting', `Reclaiming room… retry ${hostIdRetries} (${secs}s)`);
-        setTimeout(() => initPeer(id), wait);
-      } else if (err.type === 'peer-unavailable') {
-        setStatus('disconnected', 'Waiting for them to come online…');
-        if (!isHost) scheduleGuestReconnect();
-      } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
-        setStatus('disconnected', 'Network issue — retrying…');
-        // Reinit with the SAME id so nothing changes
-        setTimeout(() => initPeer(id), 4000);
-      } else {
-        setStatus('disconnected', 'Connection error');
-      }
-    });
-
-    peer.on('disconnected', () => {
-      setStatus('disconnected', 'Reconnecting to server…');
-      setTimeout(() => {
-        if (peer && !peer.destroyed) {
-          try { peer.reconnect(); } catch (_) { initPeer(id); }
-        }
-      }, 2000);
-    });
-  }
-
-  function connectToPeer(targetId) {
-    if (!peer || peer.destroyed) return;
-    if (conn && conn.open) return; // already connected, don't duplicate
-    setStatus('connecting', 'Connecting…');
-    const c = peer.connect(targetId, {
-      reliable: true,
-      serialization: 'json',
-      metadata: { version: 1 },
-    });
-    setupConnection(c);
-  }
-
-  function setupConnection(c) {
-    // Tear down any old connection cleanly
-    if (conn && conn !== c) { try { conn.close(); } catch (_) {} }
-    conn = c;
-    setStatus('connecting', 'Establishing…');
-
-    conn.on('open', async () => {
-      guestRetryCount = 0; // connection succeeded — reset backoff
-      setStatus('connected', '💕 Connected');
-      showToast('Connected! ✨');
-      maybeAskNotifPermission();
-      if (!isHost) await loadHistory(hostId);
-      // Share current background
-      if (currentBgUrl) {
-        const opacity = parseInt(bgOpacitySlider.value, 10);
-        setTimeout(() => sendBgToPeer(currentBgUrl, opacity), 500);
-      }
-      // Keep-alive: send ping every 20 s to prevent NAT/idle teardown
-      clearInterval(keepAliveInterval);
-      keepAliveInterval = setInterval(() => {
-        if (conn && conn.open) {
-          try { conn.send({ event: 'ping' }); } catch (_) {}
-        } else {
-          clearInterval(keepAliveInterval);
-        }
-      }, 20000);
-    });
-
-    conn.on('data', handleIncoming);
-
-    conn.on('close', () => {
-      clearInterval(keepAliveInterval);
-      setStatus('disconnected', 'Peer disconnected');
-      showPeerTyping(false);
-      conn = null;
-      if (!isHost) {
-        showToast('Disconnected — will reconnect…');
-        scheduleGuestReconnect();
-      } else {
-        showToast('Peer left — waiting for them to return…');
-      }
-    });
-
-    conn.on('error', err => {
-      console.warn('conn error', err);
-      clearInterval(keepAliveInterval);
-      setStatus('disconnected', 'Connection lost');
-      conn = null;
-      if (!isHost) scheduleGuestReconnect();
-    });
-  }
-
-  function handleIncoming(data) {
-    if (!data || !data.event) return;
-    if (data.event === 'ping') return; // keep-alive, no-op
-    if (data.event === 'message') {
-      const msg = { ...data.data, from: 'them' };
-      renderMessage(msg, true);
-      sendNotification(msg.type === 'text' ? msg.content : msg.type === 'image' ? '📷 Image' : '🎙️ Voice message');
-    } else if (data.event === 'typing') {
-      showPeerTyping(data.data);
-    } else if (data.event === 'bg-update') {
-      // Peer changed the background — apply locally but don't save to localStorage
-      // (each person manages their own storage; we just mirror the visual)
-      const { dataUrl, opacity } = data.data;
-      applyBg(dataUrl, opacity, true); // save=true so it persists on reload for them too
-    }
+    maybeAskNotifPermission();
+    checkEmpty();
   }
 
   /* ---------- Boot ---------- */
   async function boot() {
-    await openDB();
+    setStatus('connecting', 'Signing in…');
 
-    const roomId = getRoomId();
-    const savedHostId = localStorage.getItem('vairu-host-id');
+    fbApp  = firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth = firebase.auth();
+    fbDb   = firebase.database();
 
-    // If the URL hash matches our own saved host ID, we ARE the host (not a guest).
-    // This happens when the host bookmarks/copies the URL after history.replaceState added the hash.
-    if (roomId && roomId !== savedHostId) {
-      // Genuine guest: hash is someone else's room ID
+    // Anonymous auth gives each browser a stable permanent UID — no need for localStorage hacks
+    await fbAuth.signInAnonymously();
+    myId = fbAuth.currentUser.uid;
+
+    const roomId = getRoomId(); // URL hash, if present
+
+    if (roomId && roomId !== myId) {
+      // Guest: URL has someone else's room ID
       isHost = false;
       hostId = roomId;
       setStatus('connecting', 'Joining room…');
-      // Reuse saved guest ID so guest identity is also stable across sessions
-      const savedGuestId = localStorage.getItem('vairu-guest-id') || ('vairu-' + generateId());
-      localStorage.setItem('vairu-guest-id', savedGuestId);
-      initPeer(savedGuestId);
     } else {
-      // Host: either no hash in URL, or hash == our own saved ID (bookmarked our own room URL)
+      // Host: no hash, or hash == our own UID (bookmarked our own room URL)
       isHost = true;
-      const useId = savedHostId || ('vairu-' + generateId());
-      if (!savedHostId) localStorage.setItem('vairu-host-id', useId);
-      setStatus('connecting', 'Initialising…');
-      // Load history immediately so old messages appear even before peer connects
-      await loadHistory(useId);
-      initPeer(useId);
+      hostId = myId;
+      history.replaceState(null, '', '#' + myId);
+      setStatus('connecting', 'Waiting for your person… 💌');
     }
+
+    subscribeToRoom(hostId);
   }
 
-  boot().catch(console.error);
+  boot().catch(err => {
+    console.error('Boot error:', err);
+    setStatus('disconnected', 'Failed to connect — check Firebase config');
+  });
 
 })();
 </script>
