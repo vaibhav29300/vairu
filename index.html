@@ -923,9 +923,56 @@
     notifToggle.checked = true;
   }
 
+  /* ---------- Notification chime (Web Audio API — no file needed) ---------- */
+  function playChime() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = ctx.currentTime;
+      // Two-note gentle chime: C5 then E5
+      [[523.25, 0], [659.25, 0.14]].forEach(([freq, delay]) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, now + delay);
+        gain.gain.linearRampToValueAtTime(0.18, now + delay + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.6);
+        osc.start(now + delay);
+        osc.stop(now + delay + 0.7);
+      });
+    } catch (_) {}
+  }
+
   function sendNotification(text) {
-    if (!notificationsEnabled || document.visibilityState === 'visible') return;
-    new Notification('Vairu', { body: text, icon: '' });
+    playChime();
+    if (!notificationsEnabled) return;
+    // Show browser notification when tab is not focused
+    if (document.visibilityState !== 'visible') {
+      new Notification('VAIRU 💕', { body: text, silent: true });
+    }
+  }
+
+  // Auto-request notification permission once when peer first connects
+  let notifAsked = false;
+  function maybeAskNotifPermission() {
+    if (notifAsked || notificationsEnabled) return;
+    notifAsked = true;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(p => {
+        if (p === 'granted') {
+          notificationsEnabled = true;
+          notifToggle.checked = true;
+          localStorage.setItem('vairu-notif', '1');
+          showToast('Notifications enabled 🔔');
+        }
+      });
+    } else if (Notification.permission === 'granted') {
+      notificationsEnabled = true;
+      notifToggle.checked = true;
+      localStorage.setItem('vairu-notif', '1');
+    }
   }
 
   /* ---------- Clear Chat ---------- */
@@ -1247,6 +1294,7 @@
     conn.on('open', async () => {
       setStatus('connected', '💕 Connected');
       showToast('Connected! ✨');
+      maybeAskNotifPermission();
       // Guest: load history now (using host's ID as room key)
       if (!isHost) {
         await loadHistory(hostId);
