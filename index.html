@@ -1434,19 +1434,24 @@
     await openDB();
 
     const roomId = getRoomId();
+    const savedHostId = localStorage.getItem('vairu-host-id');
 
-    if (roomId) {
-      // Guest: connect to host with this ID
+    // If the URL hash matches our own saved host ID, we ARE the host (not a guest).
+    // This happens when the host bookmarks/copies the URL after history.replaceState added the hash.
+    if (roomId && roomId !== savedHostId) {
+      // Genuine guest: hash is someone else's room ID
       isHost = false;
       hostId = roomId;
       setStatus('connecting', 'Joining room…');
-      initPeer('vairu-' + generateId()); // Guest gets random ID
+      // Reuse saved guest ID so guest identity is also stable across sessions
+      const savedGuestId = localStorage.getItem('vairu-guest-id') || ('vairu-' + generateId());
+      localStorage.setItem('vairu-guest-id', savedGuestId);
+      initPeer(savedGuestId);
     } else {
-      // Host: reuse saved ID so room and chat history persist across sessions
+      // Host: either no hash in URL, or hash == our own saved ID (bookmarked our own room URL)
       isHost = true;
-      const savedId = localStorage.getItem('vairu-host-id');
-      const useId = savedId || ('vairu-' + generateId());
-      if (!savedId) localStorage.setItem('vairu-host-id', useId);
+      const useId = savedHostId || ('vairu-' + generateId());
+      if (!savedHostId) localStorage.setItem('vairu-host-id', useId);
       setStatus('connecting', 'Initialising…');
       // Load history immediately so old messages appear even before peer connects
       await loadHistory(useId);
