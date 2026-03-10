@@ -1277,11 +1277,14 @@
 
   function scheduleGuestReconnect() {
     clearTimeout(guestRetryTimer);
-    // Exponential backoff: 3s, 6s, 12s, … capped at 30s
-    const delay = Math.min(3000 * Math.pow(1.8, guestRetryCount), 30000);
+    // Backoff: 3s → 5s → 8s → 12s → 18s, capped at 20s — retries indefinitely
+    const delay = Math.min(3000 * Math.pow(1.5, guestRetryCount), 20000);
     guestRetryCount++;
-    setStatus('disconnected', `Reconnecting in ${Math.round(delay / 1000)}s…`);
-    guestRetryTimer = setTimeout(() => connectToPeer(hostId), delay);
+    setStatus('disconnected', `Will reconnect in ${Math.round(delay / 1000)}s…`);
+    guestRetryTimer = setTimeout(() => {
+      if (conn && conn.open) return; // already reconnected, skip
+      connectToPeer(hostId);
+    }, delay);
   }
 
   function initPeer(id) {
@@ -1315,26 +1318,21 @@
     peer.on('error', err => {
       console.warn('PeerJS error:', err.type, err.message);
       if (err.type === 'unavailable-id') {
-        // The saved host ID is still registered on the broker from a recent session.
-        // Retry up to 4 times with increasing delay before accepting a new ID.
-        if (isHost && hostIdRetries < 4) {
-          hostIdRetries++;
-          const wait = 1500 * hostIdRetries;
-          setStatus('connecting', `Room busy, retrying… (${hostIdRetries}/4)`);
-          setTimeout(() => initPeer(id), wait);
-        } else {
-          // Give up on the old ID — generate and persist a fresh one
-          const freshId = 'vairu-' + generateId();
-          if (isHost) localStorage.setItem('vairu-host-id', freshId);
-          hostIdRetries = 0;
-          initPeer(freshId);
-        }
+        // The broker still has this ID registered from the previous session
+        // (takes up to 60 s to expire). Keep retrying the SAME ID — never generate
+        // a new one, so the room link stays valid forever.
+        hostIdRetries++;
+        const wait = Math.min(3000 * hostIdRetries, 12000); // 3s, 6s, 9s, 12s, 12s, …
+        const secs = Math.round(wait / 1000);
+        setStatus('connecting', `Reclaiming room… retry ${hostIdRetries} (${secs}s)`);
+        setTimeout(() => initPeer(id), wait);
       } else if (err.type === 'peer-unavailable') {
         setStatus('disconnected', 'Waiting for them to come online…');
         if (!isHost) scheduleGuestReconnect();
       } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
         setStatus('disconnected', 'Network issue — retrying…');
-        setTimeout(() => initPeer(isHost ? id : ('vairu-' + generateId())), 3000);
+        // Reinit with the SAME id so nothing changes
+        setTimeout(() => initPeer(id), 4000);
       } else {
         setStatus('disconnected', 'Connection error');
       }
@@ -1342,10 +1340,9 @@
 
     peer.on('disconnected', () => {
       setStatus('disconnected', 'Reconnecting to server…');
-      // Try to reconnect to the signalling server; on success peer.on('open') fires again
       setTimeout(() => {
         if (peer && !peer.destroyed) {
-          try { peer.reconnect(); } catch (_) { initPeer(isHost ? id : ('vairu-' + generateId())); }
+          try { peer.reconnect(); } catch (_) { initPeer(id); }
         }
       }, 2000);
     });
