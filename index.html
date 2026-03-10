@@ -1257,83 +1257,130 @@
   micBtn.addEventListener('touchend', e => { e.preventDefault(); stopRec(); });
 
   /* ---------- PeerJS ---------- */
+
+  // Multiple STUN servers + free TURN relay for symmetric-NAT traversal.
+  // TURN traffic is DTLS-encrypted — the relay server cannot read messages.
+  const ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'turn:openrelay.metered.ca:80',       username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443',      username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  ];
+
+  let hostIdRetries = 0;       // how many times we've retried the same host ID
+  let guestRetryCount = 0;     // for exponential backoff on guest reconnects
+  let guestRetryTimer = null;
+  let keepAliveInterval = null;
+
+  function scheduleGuestReconnect() {
+    clearTimeout(guestRetryTimer);
+    // Exponential backoff: 3s, 6s, 12s, … capped at 30s
+    const delay = Math.min(3000 * Math.pow(1.8, guestRetryCount), 30000);
+    guestRetryCount++;
+    setStatus('disconnected', `Reconnecting in ${Math.round(delay / 1000)}s…`);
+    guestRetryTimer = setTimeout(() => connectToPeer(hostId), delay);
+  }
+
   function initPeer(id) {
-    const peerOpts = {
-      // Using default PeerJS cloud server (free)
+    // Always destroy any existing instance first to avoid duplicate registrations
+    if (peer && !peer.destroyed) { try { peer.destroy(); } catch (_) {} }
+
+    peer = new Peer(id, {
       debug: 0,
-    };
-    peer = new Peer(id, peerOpts);
+      config: { iceServers: ICE_SERVERS, iceCandidatePoolSize: 4 },
+    });
 
     peer.on('open', peerId => {
       myId = peerId;
-      // Persist the host ID so room survives page reloads
+      hostIdRetries = 0; // reset retry counter on successful open
       if (isHost) localStorage.setItem('vairu-host-id', peerId);
-      // Update URL hash without triggering navigation
       history.replaceState(null, '', '#' + peerId);
 
       if (isHost) {
         setStatus('connecting', 'Waiting for your person… 💌');
       } else {
-        // Guest: connect to host
+        guestRetryCount = 0; // reset backoff on fresh peer open
         setStatus('connecting', 'Joining…');
         connectToPeer(hostId);
       }
     });
 
     peer.on('connection', incoming => {
-      // Host receives connection from guest
       setupConnection(incoming);
     });
 
     peer.on('error', err => {
       console.warn('PeerJS error:', err.type, err.message);
       if (err.type === 'unavailable-id') {
-        // ID taken (stale session on PeerJS server), generate a fresh one
-        const freshId = 'vairu-' + generateId();
-        if (isHost) localStorage.setItem('vairu-host-id', freshId);
-        initPeer(freshId);
+        // The saved host ID is still registered on the broker from a recent session.
+        // Retry up to 4 times with increasing delay before accepting a new ID.
+        if (isHost && hostIdRetries < 4) {
+          hostIdRetries++;
+          const wait = 1500 * hostIdRetries;
+          setStatus('connecting', `Room busy, retrying… (${hostIdRetries}/4)`);
+          setTimeout(() => initPeer(id), wait);
+        } else {
+          // Give up on the old ID — generate and persist a fresh one
+          const freshId = 'vairu-' + generateId();
+          if (isHost) localStorage.setItem('vairu-host-id', freshId);
+          hostIdRetries = 0;
+          initPeer(freshId);
+        }
       } else if (err.type === 'peer-unavailable') {
         setStatus('disconnected', 'Waiting for them to come online…');
-        showToast('Not connected yet — will retry 💫');
-        setTimeout(() => connectToPeer(hostId), 5000);
+        if (!isHost) scheduleGuestReconnect();
+      } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
+        setStatus('disconnected', 'Network issue — retrying…');
+        setTimeout(() => initPeer(isHost ? id : ('vairu-' + generateId())), 3000);
       } else {
         setStatus('disconnected', 'Connection error');
       }
     });
 
     peer.on('disconnected', () => {
-      setStatus('disconnected', 'Reconnecting…');
-      setTimeout(() => { if (peer && !peer.destroyed) peer.reconnect(); }, 2000);
+      setStatus('disconnected', 'Reconnecting to server…');
+      // Try to reconnect to the signalling server; on success peer.on('open') fires again
+      setTimeout(() => {
+        if (peer && !peer.destroyed) {
+          try { peer.reconnect(); } catch (_) { initPeer(isHost ? id : ('vairu-' + generateId())); }
+        }
+      }, 2000);
     });
   }
 
-  let keepAliveInterval = null;
-
   function connectToPeer(targetId) {
     if (!peer || peer.destroyed) return;
+    if (conn && conn.open) return; // already connected, don't duplicate
     setStatus('connecting', 'Connecting…');
-    const c = peer.connect(targetId, { reliable: true, serialization: 'json' });
+    const c = peer.connect(targetId, {
+      reliable: true,
+      serialization: 'json',
+      metadata: { version: 1 },
+    });
     setupConnection(c);
   }
 
   function setupConnection(c) {
+    // Tear down any old connection cleanly
+    if (conn && conn !== c) { try { conn.close(); } catch (_) {} }
     conn = c;
     setStatus('connecting', 'Establishing…');
 
     conn.on('open', async () => {
+      guestRetryCount = 0; // connection succeeded — reset backoff
       setStatus('connected', '💕 Connected');
       showToast('Connected! ✨');
       maybeAskNotifPermission();
-      // Guest: load history now (using host's ID as room key)
-      if (!isHost) {
-        await loadHistory(hostId);
-      }
-      // Share current background with the peer if one is set
+      if (!isHost) await loadHistory(hostId);
+      // Share current background
       if (currentBgUrl) {
         const opacity = parseInt(bgOpacitySlider.value, 10);
-        setTimeout(() => sendBgToPeer(currentBgUrl, opacity), 500); // slight delay to ensure channel is ready
+        setTimeout(() => sendBgToPeer(currentBgUrl, opacity), 500);
       }
-      // Keep-alive pings every 25 s to prevent NAT/idle disconnect
+      // Keep-alive: send ping every 20 s to prevent NAT/idle teardown
       clearInterval(keepAliveInterval);
       keepAliveInterval = setInterval(() => {
         if (conn && conn.open) {
@@ -1341,22 +1388,21 @@
         } else {
           clearInterval(keepAliveInterval);
         }
-      }, 25000);
+      }, 20000);
     });
 
-    conn.on('data', data => {
-      handleIncoming(data);
-    });
+    conn.on('data', handleIncoming);
 
     conn.on('close', () => {
       clearInterval(keepAliveInterval);
       setStatus('disconnected', 'Peer disconnected');
       showPeerTyping(false);
-      showToast('Peer disconnected — waiting to reconnect…');
       conn = null;
-      // Guest auto-retries; host stays open waiting for new connection
       if (!isHost) {
-        setTimeout(() => connectToPeer(hostId), 4000);
+        showToast('Disconnected — will reconnect…');
+        scheduleGuestReconnect();
+      } else {
+        showToast('Peer left — waiting for them to return…');
       }
     });
 
@@ -1364,6 +1410,8 @@
       console.warn('conn error', err);
       clearInterval(keepAliveInterval);
       setStatus('disconnected', 'Connection lost');
+      conn = null;
+      if (!isHost) scheduleGuestReconnect();
     });
   }
 
