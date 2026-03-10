@@ -844,8 +844,10 @@
   const bgPickDesc    = $('bg-pick-desc');
 
   const appEl = $('app');
+  let currentBgUrl = null; // track current bg for opacity sync
 
-  function applyBg(dataUrl, opacity) {
+  function applyBg(dataUrl, opacity, save = false) {
+    currentBgUrl = dataUrl || null;
     if (!dataUrl) {
       bgLayer.style.backgroundImage = '';
       bgLayer.style.opacity = 0;
@@ -853,6 +855,10 @@
       bgRemoveBtn.style.display = 'none';
       bgPickDesc.textContent = 'No image set';
       appEl.classList.remove('has-bg');
+      if (save) {
+        localStorage.removeItem('vairu-bg');
+        localStorage.removeItem('vairu-bg-opacity');
+      }
       return;
     }
     bgLayer.style.backgroundImage = 'url(' + dataUrl + ')';
@@ -863,6 +869,16 @@
     bgOpacitySlider.value = opacity;
     bgOpacityVal.textContent = opacity + '%';
     appEl.classList.add('has-bg');
+    if (save) {
+      localStorage.setItem('vairu-bg', dataUrl);
+      localStorage.setItem('vairu-bg-opacity', opacity);
+    }
+  }
+
+  function sendBgToPeer(dataUrl, opacity) {
+    if (conn && conn.open) {
+      try { conn.send({ event: 'bg-update', data: { dataUrl: dataUrl || null, opacity } }); } catch (_) {}
+    }
   }
 
   // Load saved bg on start
@@ -879,30 +895,43 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = e => {
-      const dataUrl = e.target.result;
-      const opacity = parseInt(bgOpacitySlider.value, 10);
-      localStorage.setItem('vairu-bg', dataUrl);
-      localStorage.setItem('vairu-bg-opacity', opacity);
-      applyBg(dataUrl, opacity);
-      showToast('Background set!');
+      // Resize to max 1200px wide before storing/sending to keep data size manageable
+      const tmp = new Image();
+      tmp.onload = () => {
+        const maxW = 1200;
+        const scale = Math.min(1, maxW / tmp.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = tmp.width * scale;
+        canvas.height = tmp.height * scale;
+        canvas.getContext('2d').drawImage(tmp, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const opacity = parseInt(bgOpacitySlider.value, 10);
+        applyBg(dataUrl, opacity, true);
+        sendBgToPeer(dataUrl, opacity);
+        showToast('Background updated for both of you ✨');
+      };
+      tmp.src = e.target.result;
     };
     reader.readAsDataURL(file);
     bgImageInput.value = '';
   });
 
+  let opacitySyncTimer = null;
   bgOpacitySlider.addEventListener('input', () => {
     const opacity = parseInt(bgOpacitySlider.value, 10);
     bgLayer.style.opacity = opacity / 100;
     bgOpacityVal.textContent = opacity + '%';
     localStorage.setItem('vairu-bg-opacity', opacity);
+    // Debounce sending opacity to peer (avoid flooding on drag)
+    clearTimeout(opacitySyncTimer);
+    opacitySyncTimer = setTimeout(() => sendBgToPeer(currentBgUrl, opacity), 300);
   });
 
   bgRemoveBtn.addEventListener('click', e => {
     e.stopPropagation();
-    localStorage.removeItem('vairu-bg');
-    localStorage.removeItem('vairu-bg-opacity');
-    applyBg(null, 50);
-    showToast('Background removed');
+    applyBg(null, 50, true);
+    sendBgToPeer(null, 50);
+    showToast('Background removed for both of you');
   });
 
   /* ---------- Notifications ---------- */
@@ -1299,6 +1328,11 @@
       if (!isHost) {
         await loadHistory(hostId);
       }
+      // Share current background with the peer if one is set
+      if (currentBgUrl) {
+        const opacity = parseInt(bgOpacitySlider.value, 10);
+        setTimeout(() => sendBgToPeer(currentBgUrl, opacity), 500); // slight delay to ensure channel is ready
+      }
       // Keep-alive pings every 25 s to prevent NAT/idle disconnect
       clearInterval(keepAliveInterval);
       keepAliveInterval = setInterval(() => {
@@ -1342,6 +1376,11 @@
       sendNotification(msg.type === 'text' ? msg.content : msg.type === 'image' ? '📷 Image' : '🎙️ Voice message');
     } else if (data.event === 'typing') {
       showPeerTyping(data.data);
+    } else if (data.event === 'bg-update') {
+      // Peer changed the background — apply locally but don't save to localStorage
+      // (each person manages their own storage; we just mirror the visual)
+      const { dataUrl, opacity } = data.data;
+      applyBg(dataUrl, opacity, true); // save=true so it persists on reload for them too
     }
   }
 
