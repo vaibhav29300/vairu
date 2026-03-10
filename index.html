@@ -747,7 +747,7 @@
   <!-- Input Bar -->
   <div id="input-bar" style="display:none">
     <button class="input-btn" id="attach-btn" title="Send image"><i class="fa-solid fa-image"></i></button>
-    <input type="file" id="image-input" accept="image/*" capture="environment" />
+    <input type="file" id="image-input" accept="image/*" />
     <textarea id="msg-input" placeholder="Say something sweet…" rows="1"></textarea>
     <button class="input-btn" id="mic-btn" title="Hold to record">
       <i class="fa-solid fa-microphone"></i>
@@ -1153,7 +1153,7 @@ const FIREBASE_CONFIG = {
 
     const group = document.createElement('div');
     group.className = 'msg-group ' + (msg.from === 'me' ? 'sent' : 'recv');
-    if (msg.from === 'me') group.dataset.ts = msg.ts;
+    group.dataset.ts = msg.ts; // always store ts for time-grouping logic
 
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
@@ -1213,12 +1213,16 @@ const FIREBASE_CONFIG = {
       bubble.appendChild(wrapper);
     }
 
-    const timeEl = document.createElement('div');
-    timeEl.className = 'msg-time';
-    timeEl.textContent = formatTime(msg.ts);
-
-    group.appendChild(bubble);
-    group.appendChild(timeEl);
+    // Only show timestamp if last message was > 5 minutes ago
+    const lastGroup = typingIndicator.previousElementSibling;
+    const lastTs = lastGroup && lastGroup.dataset.ts ? Number(lastGroup.dataset.ts) : 0;
+    const showTime = !lastTs || (msg.ts - lastTs) > 5 * 60 * 1000;
+    if (showTime) {
+      const timeEl = document.createElement('div');
+      timeEl.className = 'msg-time';
+      timeEl.textContent = formatTime(msg.ts);
+      group.appendChild(timeEl);
+    }
     if (msg.from === 'me') {
       const seenEl = document.createElement('div');
       seenEl.className = 'seen-indicator';
@@ -1343,7 +1347,6 @@ const FIREBASE_CONFIG = {
       mediaRecorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(audioChunks, { type: mimeType });
-        if (recSeconds < 1) { showToast('Recording too short'); return; }
         const reader = new FileReader();
         reader.onload = e => sendMessage('audio', e.target.result);
         reader.readAsDataURL(blob);
