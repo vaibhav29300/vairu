@@ -517,39 +517,215 @@
     @media (min-width: 520px) {
       #messages-wrap::-webkit-scrollbar { width: 5px; }
     }
+
+    /* ===== USERNAME SCREEN ===== */
+    #username-screen {
+      position: absolute; inset: 0; z-index: 50;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    #username-screen.hidden {
+      opacity: 0; pointer-events: none; transform: translateY(-20px);
+    }
+    #username-card {
+      width: 100%; max-width: 340px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+      text-align: center;
+    }
+    #username-logo {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    }
+    #username-logo-icon {
+      width: 48px; height: 48px;
+      background: var(--header-bg);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: #fff;
+      box-shadow: 0 4px 16px rgba(194,24,91,0.35);
+    }
+    #username-logo-text {
+      font-size: 30px; font-weight: 800; color: var(--text); letter-spacing: 3px;
+    }
+    #username-tagline {
+      font-size: 16px; color: var(--text2); font-weight: 500; margin-top: -4px;
+    }
+    #username-input {
+      width: 100%;
+      background: var(--input-bg);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-size: 16px; color: var(--text);
+      outline: none;
+      text-align: center;
+      transition: border-color var(--transition);
+      font-family: inherit;
+    }
+    #username-input:focus { border-color: var(--accent); }
+    #username-input::placeholder { color: var(--text2); }
+    #username-submit-btn {
+      width: 100%;
+      background: var(--header-bg);
+      border: none; border-radius: 16px;
+      padding: 14px 18px;
+      font-size: 15px; font-weight: 700; color: #fff;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 4px 16px rgba(194,24,91,0.35);
+      transition: opacity var(--transition), transform var(--transition);
+    }
+    #username-submit-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    #username-submit-btn:active { transform: scale(0.98); }
+    #username-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    #username-hint { font-size: 12px; color: var(--text2); }
+
+    /* ===== USERS LIST SCREEN ===== */
+    #users-list-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative; z-index: 1;
+    }
+    #users-list-header {
+      padding: 12px 16px 8px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    #users-list-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    #users-online-count { font-size: 12px; color: var(--status-connected); font-weight: 600; }
+    #users-list-wrap {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 6px;
+      -webkit-overflow-scrolling: touch;
+    }
+    #users-list-wrap::-webkit-scrollbar { width: 3px; }
+    #users-list-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    /* User card */
+    .user-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+    .user-card:hover { background: var(--surface2); transform: translateY(-1px); box-shadow: var(--shadow); }
+    .user-card:active { transform: scale(0.98); box-shadow: none; }
+    .user-card.is-me { opacity: 0.55; cursor: default; }
+    .user-card.is-me:hover { transform: none; box-shadow: none; background: var(--surface); }
+    /* Avatar */
+    .user-avatar {
+      width: 46px; height: 46px; border-radius: 50%;
+      background: var(--header-bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+      position: relative;
+      box-shadow: 0 2px 8px rgba(194,24,91,0.25);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .online-dot {
+      position: absolute; bottom: 1px; right: 1px;
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid var(--surface);
+      background: var(--status-disconnected);
+      transition: background 0.4s;
+    }
+    .online-dot.online { background: var(--status-connected); }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .you-badge {
+      font-size: 10px; font-weight: 500; color: var(--text2);
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 5px; padding: 1px 5px; margin-left: 6px;
+      vertical-align: middle;
+    }
+    .user-last-seen { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .user-chevron { color: var(--text2); font-size: 12px; flex-shrink: 0; }
+    /* Users empty state */
+    #users-empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px;
+      padding: 40px 24px; text-align: center; pointer-events: none;
+      flex: 1;
+    }
+
+    /* ===== HEADER CHAT MODE ===== */
+    #chat-partner-info {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+    }
+    #chat-partner-name { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
+    #chat-partner-status { font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 500; }
   </style>
 </head>
 <body>
 <div id="app">
   <!-- Background image layer -->
   <div id="bg-layer"></div>
+
+  <!-- Username screen — shown on first launch -->
+  <div id="username-screen">
+    <div id="username-card">
+      <div id="username-logo">
+        <div id="username-logo-icon"><i class="fa-solid fa-heart"></i></div>
+        <div id="username-logo-text"><span class="accent-letter">V</span>AI<span class="accent-letter">R</span>U</div>
+      </div>
+      <p id="username-tagline">What should we call you?</p>
+      <input type="text" id="username-input" placeholder="Enter your display name…" maxlength="32" autocomplete="off" autocorrect="off" spellcheck="false" />
+      <button id="username-submit-btn">Start Chatting <i class="fa-solid fa-arrow-right"></i></button>
+      <p id="username-hint">This name is visible to everyone on VAIRU</p>
+    </div>
+  </div>
+
   <!-- Header -->
   <div id="header">
-    <div id="header-left"></div>
+    <div id="header-left">
+      <button class="header-btn" id="back-btn" title="Back" style="display:none"><i class="fa-solid fa-arrow-left"></i></button>
+    </div>
     <div id="logo">
       <div id="logo-icon"><i class="fa-solid fa-heart"></i></div>
       <div id="logo-text"><span class="accent-letter">V</span>AI<span class="accent-letter">R</span>U</div>
+      <div id="chat-partner-info" style="display:none">
+        <div id="chat-partner-name"></div>
+        <div id="chat-partner-status"></div>
+      </div>
     </div>
     <div id="header-actions">
       <button class="header-btn" id="settings-btn" title="Settings"><i class="fa-solid fa-gear"></i></button>
     </div>
   </div>
 
-  <!-- Status Bar -->
-  <div id="status-bar">
-    <div id="status-indicator">
-      <div id="status-dot" class="disconnected"></div>
-      <span id="status-text">Waiting for peer…</span>
+  <!-- Users List Screen -->
+  <div id="users-list-screen" style="display:none">
+    <div id="users-list-header">
+      <span id="users-list-title">People</span>
+      <span id="users-online-count"></span>
     </div>
-    <button id="copy-link-btn"><i class="fa-solid fa-link"></i> Copy Link</button>
+    <div id="users-list-wrap">
+      <div id="users-empty-state" style="display:none">
+        <div class="empty-icon"><i class="fa-solid fa-users"></i></div>
+        <h3>No one else here yet</h3>
+        <p>Share the app link with a friend<br/>and they'll appear here.</p>
+      </div>
+    </div>
   </div>
 
   <!-- Messages -->
-  <div id="messages-wrap">
+  <div id="messages-wrap" style="display:none">
     <div id="empty-state">
-      <div class="empty-icon"><i class="fa-solid fa-heart"></i></div>
-      <h3>Your space, just the two of you</h3>
-      <p>Share the link with your special someone.<br/>Messages are private — no servers, just you.</p>
+      <div class="empty-icon"><i class="fa-solid fa-comment-dots"></i></div>
+      <h3>No messages yet</h3>
+      <p>Say something sweet to start<br/>the conversation.</p>
     </div>
     <div id="typing-indicator">
       <div class="typing-dots"><span></span><span></span><span></span></div>
@@ -558,7 +734,7 @@
   </div>
 
   <!-- Input Bar -->
-  <div id="input-bar">
+  <div id="input-bar" style="display:none">
     <button class="input-btn" id="attach-btn" title="Send image"><i class="fa-solid fa-image"></i></button>
     <input type="file" id="image-input" accept="image/*" capture="environment" />
     <textarea id="msg-input" placeholder="Say something sweet…" rows="1"></textarea>
@@ -604,12 +780,12 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
-      <div class="setting-item" id="copy-link-item">
+      <div class="setting-item" id="change-username-item">
         <div class="setting-item-left">
-          <div class="setting-icon" style="background:linear-gradient(135deg,#ffb30022,#ff4d6d22);color:#ffb300"><i class="fa-solid fa-share-nodes"></i></div>
+          <div class="setting-icon" style="background:linear-gradient(135deg,#448aff22,#e91e8c22);color:#448aff"><i class="fa-solid fa-user-pen"></i></div>
           <div>
-            <div class="setting-label">Share Room Link</div>
-            <div class="setting-desc">Copy invite link to clipboard</div>
+            <div class="setting-label">Change Username</div>
+            <div class="setting-desc" id="current-username-desc">Loading…</div>
           </div>
         </div>
         <i class="fa-solid fa-chevron-right" style="color:var(--text2);font-size:12px"></i>
@@ -647,7 +823,7 @@
 
       <button class="danger-btn" id="clear-chat-btn"><i class="fa-solid fa-trash"></i> Clear Chat History</button>
     </div>
-    <div class="settings-footer">VAIRU v2.0 · Firebase · Just the two of you 💕<br/>Messages synced & stored securely in the cloud</div>
+    <div class="settings-footer">VAIRU v2.0 · Firebase · Everyone welcome 💕<br/>Messages synced & stored securely in the cloud</div>
   </div>
 </div>
 
@@ -682,86 +858,64 @@ const FIREBASE_CONFIG = {
 
   /* ---------- DOM refs ---------- */
   const $ = id => document.getElementById(id);
-  const statusDot = $('status-dot');
-  const statusText = $('status-text');
-  const copyLinkBtn = $('copy-link-btn');
-  const messagesWrap = $('messages-wrap');
-  const emptyState = $('empty-state');
-  const typingIndicator = $('typing-indicator');
-  const msgInput = $('msg-input');
-  const attachBtn = $('attach-btn');
-  const imageInput = $('image-input');
-  const micBtn = $('mic-btn');
-  const sendBtn = $('send-btn');
-  const settingsBtn = $('settings-btn');
-  const settingsOverlay = $('settings-overlay');
-  const closeSettings = $('close-settings');
-  const darkToggle = $('dark-mode-toggle');
-  const notifToggle = $('notif-toggle');
-  const clearChatBtn = $('clear-chat-btn');
-  const lightbox = $('lightbox');
-  const lightboxImg = $('lightbox-img');
-  const lightboxClose = $('lightbox-close');
-  const recTimer = $('rec-timer');
-  const toast = $('toast');
-  const copyLinkItem = $('copy-link-item');
+  const messagesWrap       = $('messages-wrap');
+  const inputBar           = $('input-bar');
+  const emptyState         = $('empty-state');
+  const typingIndicator    = $('typing-indicator');
+  const msgInput           = $('msg-input');
+  const attachBtn          = $('attach-btn');
+  const imageInput         = $('image-input');
+  const micBtn             = $('mic-btn');
+  const sendBtn            = $('send-btn');
+  const settingsBtn        = $('settings-btn');
+  const settingsOverlay    = $('settings-overlay');
+  const closeSettings      = $('close-settings');
+  const darkToggle         = $('dark-mode-toggle');
+  const notifToggle        = $('notif-toggle');
+  const clearChatBtn       = $('clear-chat-btn');
+  const lightbox           = $('lightbox');
+  const lightboxImg        = $('lightbox-img');
+  const lightboxClose      = $('lightbox-close');
+  const recTimer           = $('rec-timer');
+  const toast              = $('toast');
+  // Username screen
+  const usernameScreen     = $('username-screen');
+  const usernameInput      = $('username-input');
+  const usernameSubmitBtn  = $('username-submit-btn');
+  // Users list
+  const usersListScreen    = $('users-list-screen');
+  const usersListWrap      = $('users-list-wrap');
+  const usersOnlineCount   = $('users-online-count');
+  const usersEmptyState    = $('users-empty-state');
+  // Header chat mode
+  const backBtn            = $('back-btn');
+  const logoText           = $('logo-text');
+  const chatPartnerInfo    = $('chat-partner-info');
+  const chatPartnerName    = $('chat-partner-name');
+  const chatPartnerStatus  = $('chat-partner-status');
+  // Settings
+  const changeUsernameItem = $('change-username-item');
+  const currentUsernameDesc = $('current-username-desc');
 
   /* ---------- State ---------- */
   let fbApp  = null;   // Firebase app instance
   let fbDb   = null;   // Firebase Realtime Database
   let fbAuth = null;   // Firebase Auth
   let myId   = '';     // Our Firebase UID
-  let hostId = '';     // Room ID (host's UID from URL hash)
-  let isHost = false;
-  let typingTimeout     = null;  // debounce for typing events
+  let myUsername   = '';
+  let partnerUid   = '';
+  let partnerName  = '';
+  let chatId       = '';
+  let currentScreen = '';
+  let chatListeners = [];   // active chat Firebase listeners (for cleanup)
+  let usersListOff  = null; // unsubscribe fn for users list
+  let typingTimeout     = null;
   let peerTypingTimeout = null;
   let mediaRecorder = null;
   let audioChunks   = [];
   let recInterval   = null;
   let recSeconds    = 0;
   let notificationsEnabled = false;
-
-  /* ---------- Room / URL ---------- */
-  function getRoomId() {
-    const hash = location.hash.replace('#', '').trim();
-    return hash || null;
-  }
-
-  function getRoomLink() {
-    return location.href.split('#')[0] + '#' + myId;
-  }
-
-  /* ---------- Copy Link ---------- */
-  function copyLink() {
-    const link = getRoomLink();
-    navigator.clipboard.writeText(link).then(() => {
-      copyLinkBtn.classList.add('copied');
-      copyLinkBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
-      showToast('Link copied to clipboard!');
-      setTimeout(() => {
-        copyLinkBtn.classList.remove('copied');
-        copyLinkBtn.innerHTML = '<i class="fa-solid fa-link"></i> Copy Link';
-      }, 2500);
-    }).catch(() => {
-      // fallback
-      const ta = document.createElement('textarea');
-      ta.value = link;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      showToast('Link copied!');
-    });
-  }
-
-  copyLinkBtn.addEventListener('click', copyLink);
-  copyLinkItem.addEventListener('click', () => { copyLink(); closeSettingsPanel(); });
-
-  /* ---------- Status helpers ---------- */
-  function setStatus(state, text) {
-    statusDot.className = state;
-    statusText.textContent = text;
-  }
 
   /* ---------- Toast ---------- */
   let toastTimer = null;
@@ -831,8 +985,8 @@ const FIREBASE_CONFIG = {
   }
 
   function sendBgToPeer(dataUrl, opacity) {
-    if (!fbDb || !hostId) return;
-    fbDb.ref('rooms/' + hostId + '/bg').set({ dataUrl: dataUrl || null, opacity });
+    if (!fbDb || !chatId) return;
+    fbDb.ref('chats/' + chatId + '/bg').set({ dataUrl: dataUrl || null, opacity });
   }
 
   // Load saved bg on start
@@ -961,7 +1115,7 @@ const FIREBASE_CONFIG = {
   /* ---------- Clear Chat ---------- */
   clearChatBtn.addEventListener('click', async () => {
     if (!confirm('Clear all chat history? This cannot be undone.')) return;
-    if (fbDb && hostId) await fbDb.ref('rooms/' + hostId + '/messages').remove();
+    if (fbDb && chatId) await fbDb.ref('chats/' + chatId + '/messages').remove();
     // Remove all rendered bubbles
     Array.from(messagesWrap.querySelectorAll('.msg-group')).forEach(el => el.remove());
     checkEmpty();
@@ -1070,8 +1224,8 @@ const FIREBASE_CONFIG = {
 
   /* ---------- Send message ---------- */
   function sendMessage(type, content) {
-    if (!fbDb || !hostId) { showToast('Not ready yet'); return; }
-    fbDb.ref('rooms/' + hostId + '/messages').push({
+    if (!fbDb || !chatId) { showToast('Select a conversation first'); return; }
+    fbDb.ref('chats/' + chatId + '/messages').push({
       type, content, from: myId, ts: firebase.database.ServerValue.TIMESTAMP
     });
   }
@@ -1094,8 +1248,8 @@ const FIREBASE_CONFIG = {
   /* ---------- Typing indicator ---------- */
   msgInput.addEventListener('input', () => {
     autoResize(msgInput);
-    if (fbDb && myId && hostId) {
-      fbDb.ref('rooms/' + hostId + '/typing/' + myId).set(true);
+    if (fbDb && myId && chatId) {
+      fbDb.ref('chats/' + chatId + '/typing/' + myId).set(true);
       clearTimeout(typingTimeout);
       typingTimeout = setTimeout(stopTyping, 2000);
     }
@@ -1103,7 +1257,7 @@ const FIREBASE_CONFIG = {
 
   function stopTyping() {
     clearTimeout(typingTimeout);
-    if (fbDb && myId && hostId) fbDb.ref('rooms/' + hostId + '/typing/' + myId).set(false);
+    if (fbDb && myId && chatId) fbDb.ref('chats/' + chatId + '/typing/' + myId).set(false);
   }
 
   function autoResize(el) {
@@ -1194,99 +1348,240 @@ const FIREBASE_CONFIG = {
   micBtn.addEventListener('touchstart', e => { e.preventDefault(); startRec(); });
   micBtn.addEventListener('touchend', e => { e.preventDefault(); stopRec(); });
 
+  /* ---------- Screen transitions ---------- */
+  function showScreen(name) {
+    currentScreen = name;
+    // Username screen is an absolute overlay
+    usernameScreen.classList.toggle('hidden', name !== 'username');
+    // List vs chat (both sit in the flex column)
+    usersListScreen.style.display  = name === 'list' ? 'flex' : 'none';
+    messagesWrap.style.display     = name === 'chat' ? 'flex' : 'none';
+    inputBar.style.display         = name === 'chat' ? 'flex' : 'none';
+    // Header
+    backBtn.style.display          = name === 'chat' ? 'flex' : 'none';
+    logoText.style.display         = name === 'chat' ? 'none' : 'flex';
+    chatPartnerInfo.style.display  = name === 'chat' ? 'flex' : 'none';
+  }
+
+  /* ---------- Username ---------- */
+  async function saveUsername(name) {
+    name = name.trim();
+    if (!name) return;
+    myUsername = name;
+    localStorage.setItem('vairu-username', name);
+    currentUsernameDesc.textContent = name;
+    await fbDb.ref('users/' + myId).update({ username: name });
+  }
+
+  usernameSubmitBtn.addEventListener('click', async () => {
+    const v = usernameInput.value.trim();
+    if (!v) { usernameInput.focus(); return; }
+    usernameSubmitBtn.disabled = true;
+    try {
+      await saveUsername(v);
+      registerPresence();
+      showScreen('list');
+      subscribeToUsersList();
+    } finally {
+      usernameSubmitBtn.disabled = false;
+    }
+  });
+  usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') usernameSubmitBtn.click(); });
+
+  changeUsernameItem.addEventListener('click', () => {
+    closeSettingsPanel();
+    const newName = prompt('Enter your new display name:', myUsername);
+    if (!newName || !newName.trim() || newName.trim() === myUsername) return;
+    saveUsername(newName.trim()).then(() => showToast('Username updated!'));
+  });
+
+  /* ---------- Presence ---------- */
+  function registerPresence() {
+    const userRef = fbDb.ref('users/' + myId);
+    userRef.update({ online: true, lastSeen: firebase.database.ServerValue.TIMESTAMP });
+    userRef.onDisconnect().update({ online: false, lastSeen: firebase.database.ServerValue.TIMESTAMP });
+  }
+
+  /* ---------- Helpers ---------- */
+  function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function formatLastSeen(ts) {
+    if (!ts) return 'Never';
+    const diff = Date.now() - ts;
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return 'Just now';
+    if (min < 60) return min + ' min ago';
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + 'h ago';
+    const days = Math.floor(hr / 24);
+    if (days === 1) return 'Yesterday';
+    return days + ' days ago';
+  }
+
+  /* ---------- Users List ---------- */
+  function subscribeToUsersList() {
+    const ref = fbDb.ref('users');
+    const handler = snap => {
+      const users = snap.val() || {};
+      Array.from(usersListWrap.querySelectorAll('.user-card')).forEach(c => c.remove());
+      const entries = Object.entries(users);
+      const others = entries.filter(([uid]) => uid !== myId);
+      usersEmptyState.style.display = others.length === 0 ? 'flex' : 'none';
+      // Sort: online first, then by lastSeen
+      entries.sort(([, a], [, b]) => {
+        if (a.online && !b.online) return -1;
+        if (!a.online && b.online) return 1;
+        return (b.lastSeen || 0) - (a.lastSeen || 0);
+      });
+      let onlineCount = 0;
+      entries.forEach(([uid, data]) => {
+        if (data.online) onlineCount++;
+        usersListWrap.insertBefore(renderUserCard(uid, data), usersEmptyState);
+      });
+      usersOnlineCount.textContent = onlineCount > 1 ? (onlineCount - 1) + ' online' : '';
+    };
+    ref.on('value', handler);
+    usersListOff = () => ref.off('value', handler);
+  }
+
+  function renderUserCard(uid, data) {
+    const card = document.createElement('div');
+    card.className = 'user-card' + (uid === myId ? ' is-me' : '');
+    const initials = (data.username || '?').slice(0, 2).toUpperCase();
+    const isOnline = !!data.online;
+    card.innerHTML =
+      '<div class="user-avatar">' + initials +
+        '<div class="online-dot' + (isOnline ? ' online' : '') + '"></div>' +
+      '</div>' +
+      '<div class="user-info">' +
+        '<div class="user-name">' + escapeHtml(data.username || 'Unknown') +
+          (uid === myId ? '<span class="you-badge">You</span>' : '') +
+        '</div>' +
+        '<div class="user-last-seen">' + (isOnline ? 'Online now' : formatLastSeen(data.lastSeen)) + '</div>' +
+      '</div>' +
+      (uid !== myId ? '<i class="fa-solid fa-chevron-right user-chevron"></i>' : '');
+    if (uid !== myId) {
+      card.addEventListener('click', () => openChat(uid, data.username || 'Unknown'));
+    }
+    return card;
+  }
+
+  /* ---------- Open / close chat ---------- */
+  function openChat(uid, name) {
+    // Clean up previous chat listeners first
+    chatListeners.forEach(({ ref, event, handler }) => ref.off(event, handler));
+    chatListeners = [];
+
+    partnerUid  = uid;
+    partnerName = name;
+    chatId      = [myId, uid].sort().join('_');
+
+    chatPartnerName.textContent = name;
+    chatPartnerStatus.textContent = '…';
+
+    // Clear old messages
+    Array.from(messagesWrap.querySelectorAll('.msg-group')).forEach(el => el.remove());
+    checkEmpty();
+
+    showScreen('chat');
+    subscribeToChat(chatId);
+  }
+
+  function backToList() {
+    chatListeners.forEach(({ ref, event, handler }) => ref.off(event, handler));
+    chatListeners = [];
+    stopTyping();
+    typingIndicator.classList.remove('visible');
+    partnerUid = partnerName = chatId = '';
+    showScreen('list');
+  }
+  backBtn.addEventListener('click', backToList);
+
   /* ---------- Firebase Realtime Listeners ---------- */
 
-  function subscribeToRoom(roomId) {
-    // Load history first via once('value'), then subscribe to new messages only
+  function subscribeToChat(id) {
     let historyLoaded = false;
-    const msgsRef = fbDb.ref('rooms/' + roomId + '/messages');
+    const msgsRef = fbDb.ref('chats/' + id + '/messages');
 
-    // Mark when all existing data has been delivered so we can suppress replay notifications
     msgsRef.once('value', () => { historyLoaded = true; checkEmpty(); });
 
-    // onChildAdded fires for existing messages first, then new arrivals
-    msgsRef.on('child_added', snap => {
+    const msgHandler = snap => {
       const d = snap.val();
       if (!d) return;
-      const msg = {
-        type:    d.type,
-        content: d.content,
-        from:    d.from === myId ? 'me' : 'them',
-        ts:      d.ts || Date.now()
-      };
+      const msg = { type: d.type, content: d.content, from: d.from === myId ? 'me' : 'them', ts: d.ts || Date.now() };
       renderMessage(msg);
-      // Only notify for incoming messages (not our own) after initial history replay
       if (historyLoaded && d.from !== myId) {
         sendNotification(msg.type === 'text' ? msg.content : msg.type === 'image' ? '📷 Image' : '🎙️ Voice message');
       }
-    });
+    };
+    msgsRef.on('child_added', msgHandler);
+    chatListeners.push({ ref: msgsRef, event: 'child_added', handler: msgHandler });
 
-    // Typing indicator
-    fbDb.ref('rooms/' + roomId + '/typing').on('value', snap => {
+    const typingRef = fbDb.ref('chats/' + id + '/typing');
+    const typingHandler = snap => {
       const typing = snap.val() || {};
-      const peerTyping = Object.entries(typing).some(([uid, val]) => uid !== myId && val === true);
-      showPeerTyping(peerTyping);
-    });
+      showPeerTyping(Object.entries(typing).some(([uid, val]) => uid !== myId && val === true));
+    };
+    typingRef.on('value', typingHandler);
+    chatListeners.push({ ref: typingRef, event: 'value', handler: typingHandler });
 
-    // Background sync
-    fbDb.ref('rooms/' + roomId + '/bg').on('value', snap => {
+    const bgRef = fbDb.ref('chats/' + id + '/bg');
+    const bgHandler = snap => {
       const bg = snap.val();
       if (!bg) return;
       applyBg(bg.dataUrl || null, bg.opacity != null ? bg.opacity : 50, true);
-    });
+    };
+    bgRef.on('value', bgHandler);
+    chatListeners.push({ ref: bgRef, event: 'value', handler: bgHandler });
 
-    // Presence: track who is online
-    const myPresenceRef = fbDb.ref('rooms/' + roomId + '/presence/' + myId);
-    myPresenceRef.set({ online: true, ts: firebase.database.ServerValue.TIMESTAMP });
-    myPresenceRef.onDisconnect().set({ online: false, ts: firebase.database.ServerValue.TIMESTAMP });
-
-    fbDb.ref('rooms/' + roomId + '/presence').on('value', snap => {
-      const presence = snap.val() || {};
-      const peerOnline = Object.entries(presence).some(([uid, v]) => uid !== myId && v && v.online);
-      if (peerOnline) {
-        setStatus('connected', '💕 Connected');
-      } else {
-        setStatus('connecting', isHost ? 'Waiting for your person… 💌' : 'Waiting for them to come online…');
-      }
-    });
+    // Watch partner presence from /users/{partnerUid}
+    const partnerRef = fbDb.ref('users/' + partnerUid);
+    const partnerHandler = snap => {
+      const d = snap.val() || {};
+      chatPartnerStatus.textContent = d.online ? 'Online now' : formatLastSeen(d.lastSeen);
+    };
+    partnerRef.on('value', partnerHandler);
+    chatListeners.push({ ref: partnerRef, event: 'value', handler: partnerHandler });
 
     maybeAskNotifPermission();
-    checkEmpty();
   }
 
   /* ---------- Boot ---------- */
   async function boot() {
-    setStatus('connecting', 'Signing in…');
-
     fbApp  = firebase.initializeApp(FIREBASE_CONFIG);
     fbAuth = firebase.auth();
     fbDb   = firebase.database();
 
-    // Anonymous auth gives each browser a stable permanent UID — no need for localStorage hacks
     await fbAuth.signInAnonymously();
     myId = fbAuth.currentUser.uid;
 
-    const roomId = getRoomId(); // URL hash, if present
-
-    if (roomId && roomId !== myId) {
-      // Guest: URL has someone else's room ID
-      isHost = false;
-      hostId = roomId;
-      setStatus('connecting', 'Joining room…');
+    // Check for saved username
+    const savedName = localStorage.getItem('vairu-username');
+    if (savedName) {
+      myUsername = savedName;
+      currentUsernameDesc.textContent = savedName;
+      // Sync with Firebase (may have been updated on another device)
+      fbDb.ref('users/' + myId).once('value').then(snap => {
+        const d = snap.val();
+        const name = (d && d.username) ? d.username : savedName;
+        myUsername = name;
+        localStorage.setItem('vairu-username', name);
+        currentUsernameDesc.textContent = name;
+        if (!d || !d.username) fbDb.ref('users/' + myId).update({ username: name });
+      });
+      registerPresence();
+      showScreen('list');
+      subscribeToUsersList();
     } else {
-      // Host: no hash, or hash == our own UID (bookmarked our own room URL)
-      isHost = true;
-      hostId = myId;
-      history.replaceState(null, '', '#' + myId);
-      setStatus('connecting', 'Waiting for your person… 💌');
+      showScreen('username');
+      usernameInput.focus();
     }
-
-    subscribeToRoom(hostId);
   }
 
   boot().catch(err => {
     console.error('Boot error:', err);
-    setStatus('disconnected', 'Failed to connect — check Firebase config');
+    showToast('Failed to connect — check Firebase config');
   });
 
 })();
