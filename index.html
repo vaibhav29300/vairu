@@ -4,46 +4,50 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Vairu — P2P Chat</title>
+  <meta name="theme-color" content="#c2185b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     /* ===== CSS VARIABLES ===== */
     :root {
-      --bg: #f0f2f8;
+      --bg: #fff5f8;
       --surface: #ffffff;
-      --surface2: #f5f5fb;
-      --border: #e0e0ef;
-      --text: #1a1a2e;
-      --text2: #6b6b8a;
-      --sent-bg: linear-gradient(135deg, #7c4dff, #448aff);
+      --surface2: #fff0f4;
+      --border: #f5c6d8;
+      --text: #2d1520;
+      --text2: #9e6878;
+      --sent-bg: linear-gradient(135deg, #c2185b, #e91e8c);
       --sent-text: #ffffff;
       --recv-bg: #ffffff;
-      --recv-text: #1a1a2e;
+      --recv-text: #2d1520;
       --input-bg: #ffffff;
-      --shadow: 0 2px 12px rgba(124,77,255,0.08);
-      --shadow2: 0 4px 24px rgba(124,77,255,0.15);
-      --accent: #7c4dff;
-      --accent2: #448aff;
+      --shadow: 0 2px 12px rgba(194,24,91,0.08);
+      --shadow2: 0 4px 24px rgba(194,24,91,0.15);
+      --accent: #e91e8c;
+      --accent2: #f48fb1;
       --danger: #ff4d6d;
-      --header-bg: linear-gradient(135deg, #7c4dff 0%, #448aff 100%);
+      --header-bg: linear-gradient(135deg, #c2185b 0%, #e91e8c 60%, #f48fb1 100%);
       --status-connecting: #ffb300;
       --status-connected: #00c853;
       --status-disconnected: #ff4d6d;
-      --bubble-radius: 18px;
+      --bubble-radius: 20px;
       --transition: 0.2s ease;
     }
     [data-theme="dark"] {
-      --bg: #0f0f1a;
-      --surface: #1a1a2e;
-      --surface2: #12121f;
-      --border: #2a2a3e;
-      --text: #e8e8f5;
-      --text2: #8888aa;
-      --recv-bg: #1e1e32;
-      --recv-text: #e8e8f5;
-      --input-bg: #1e1e32;
-      --shadow: 0 2px 12px rgba(0,0,0,0.4);
-      --shadow2: 0 4px 24px rgba(0,0,0,0.5);
+      --bg: #1a0a10;
+      --surface: #2d1520;
+      --surface2: #1f0d13;
+      --border: #4a2535;
+      --text: #ffe0ec;
+      --text2: #c890a0;
+      --recv-bg: #2d1a22;
+      --recv-text: #ffe0ec;
+      --input-bg: #2d1a22;
+      --shadow: 0 2px 12px rgba(0,0,0,0.5);
+      --shadow2: 0 4px 24px rgba(0,0,0,0.6);
     }
 
     /* ===== RESET & BASE ===== */
@@ -82,7 +86,7 @@
       flex-shrink: 0;
       position: relative;
       z-index: 10;
-      box-shadow: 0 2px 16px rgba(124,77,255,0.3);
+      box-shadow: 0 2px 20px rgba(194,24,91,0.35);
     }
     #logo {
       display: flex;
@@ -155,7 +159,7 @@
     #status-dot.disconnected { background: var(--status-disconnected); }
     @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
     #copy-link-btn {
-      background: linear-gradient(135deg, #7c4dff, #448aff);
+      background: linear-gradient(135deg, #c2185b, #e91e8c);
       border: none; border-radius: 20px;
       padding: 6px 14px;
       color: #fff; font-size: 12px; font-weight: 600;
@@ -200,10 +204,10 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      filter: drop-shadow(0 2px 8px rgba(124,77,255,0.3));
+      filter: drop-shadow(0 2px 8px rgba(194,24,91,0.35));
     }
     #empty-state h3 { font-size: 18px; font-weight: 700; color: var(--text); }
-    #empty-state p { font-size: 14px; color: var(--text2); line-height: 1.5; }
+    #empty-state p { font-size: 14px; color: var(--text2); line-height: 1.6; }
 
     /* ===== MESSAGE BUBBLES ===== */
     .msg-group {
@@ -272,7 +276,7 @@
       transition: transform var(--transition), opacity var(--transition);
     }
     .sent .audio-play-btn { background: rgba(255,255,255,0.25); color: #fff; }
-    .recv .audio-play-btn { background: linear-gradient(135deg,#7c4dff,#448aff); color: #fff; }
+    .recv .audio-play-btn { background: linear-gradient(135deg,#c2185b,#e91e8c); color: #fff; }
     .audio-play-btn:hover { transform: scale(1.1); }
     .audio-play-btn:active { transform: scale(0.95); }
     .audio-progress-wrap {
@@ -373,9 +377,9 @@
       background: var(--header-bg);
       color: #fff;
       border: none;
-      box-shadow: 0 2px 8px rgba(124,77,255,0.35);
+      box-shadow: 0 2px 8px rgba(194,24,91,0.35);
     }
-    #send-btn:hover { transform: scale(1.08); box-shadow: 0 4px 16px rgba(124,77,255,0.5); }
+    #send-btn:hover { transform: scale(1.08); box-shadow: 0 4px 16px rgba(194,24,91,0.5); }
     #send-btn:active { transform: scale(0.95); }
     .input-btn:active { transform: scale(0.92); }
     #image-input { display: none; }
@@ -502,7 +506,7 @@
 
     /* ===== DESKTOP CENTERING ===== */
     @media (min-width: 520px) {
-      body { background: linear-gradient(135deg, #7c4dff22, #448aff22); display:flex; align-items:center; justify-content:center; min-height:100vh; overflow:auto; }
+      body { background: linear-gradient(135deg, #fce4ec, #ffd0e8, #ffe0f0); display:flex; align-items:center; justify-content:center; min-height:100vh; overflow:auto; }
       #app { height: min(800px, 95vh); border-radius: 24px; overflow: hidden; }
     }
 
@@ -520,7 +524,7 @@
   <div id="header">
     <div id="header-left"></div>
     <div id="logo">
-      <div id="logo-icon"><i class="fa-solid fa-bolt"></i></div>
+      <div id="logo-icon"><i class="fa-solid fa-heart"></i></div>
       <div id="logo-text"><span class="accent-letter">V</span>AI<span class="accent-letter">R</span>U</div>
     </div>
     <div id="header-actions">
@@ -540,9 +544,9 @@
   <!-- Messages -->
   <div id="messages-wrap">
     <div id="empty-state">
-      <div class="empty-icon"><i class="fa-solid fa-comments"></i></div>
-      <h3>Say hi to start chatting!</h3>
-      <p>Share your link with a friend.<br/>Messages stay private — peer to peer.</p>
+      <div class="empty-icon"><i class="fa-solid fa-heart"></i></div>
+      <h3>Your space, just the two of you</h3>
+      <p>Share the link with your special someone.<br/>Messages are private — no servers, just you.</p>
     </div>
     <div id="typing-indicator">
       <div class="typing-dots"><span></span><span></span><span></span></div>
@@ -554,7 +558,7 @@
   <div id="input-bar">
     <button class="input-btn" id="attach-btn" title="Send image"><i class="fa-solid fa-image"></i></button>
     <input type="file" id="image-input" accept="image/*" capture="environment" />
-    <textarea id="msg-input" placeholder="Message…" rows="1"></textarea>
+    <textarea id="msg-input" placeholder="Say something sweet…" rows="1"></textarea>
     <button class="input-btn" id="mic-btn" title="Hold to record">
       <i class="fa-solid fa-microphone"></i>
       <div id="rec-timer">0:00</div>
@@ -573,7 +577,7 @@
     <div id="settings-body">
       <div class="setting-item" id="theme-toggle-item">
         <div class="setting-item-left">
-          <div class="setting-icon" style="background:linear-gradient(135deg,#7c4dff22,#448aff22);color:var(--accent)"><i class="fa-solid fa-moon"></i></div>
+          <div class="setting-icon" style="background:linear-gradient(135deg,#e91e8c22,#f48fb122);color:var(--accent)"><i class="fa-solid fa-moon"></i></div>
           <div>
             <div class="setting-label">Dark Mode</div>
             <div class="setting-desc">Switch between light and dark</div>
@@ -610,7 +614,7 @@
       <!-- Background image setting -->
       <div class="setting-item" id="bg-pick-item" style="cursor:pointer">
         <div class="setting-item-left">
-          <div class="setting-icon" style="background:linear-gradient(135deg,#7c4dff22,#00c85322);color:#7c4dff"><i class="fa-solid fa-image"></i></div>
+          <div class="setting-icon" style="background:linear-gradient(135deg,#e91e8c22,#00c85322);color:var(--accent)"><i class="fa-solid fa-image"></i></div>
           <div>
             <div class="setting-label">Chat Background</div>
             <div class="setting-desc" id="bg-pick-desc">No image set</div>
@@ -625,7 +629,7 @@
       <div id="bg-opacity-item" style="display:none;padding:14px 16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="display:flex;align-items:center;gap:10px">
-            <div class="setting-icon" style="background:linear-gradient(135deg,#448aff22,#7c4dff22);color:#448aff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px"><i class="fa-solid fa-droplet"></i></div>
+            <div class="setting-icon" style="background:linear-gradient(135deg,#f48fb122,#e91e8c22);color:var(--accent);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px"><i class="fa-solid fa-droplet"></i></div>
             <div>
               <div class="setting-label">Background Opacity</div>
               <div class="setting-desc">Adjust image visibility</div>
@@ -640,7 +644,7 @@
 
       <button class="danger-btn" id="clear-chat-btn"><i class="fa-solid fa-trash"></i> Clear Chat History</button>
     </div>
-    <div class="settings-footer">VAIRU v1.0 · Peer-to-peer, no servers<br/>Your chats never leave your device</div>
+    <div class="settings-footer">VAIRU v1.1 · Peer-to-peer, no servers 💕<br/>Your messages never leave your devices</div>
   </div>
 </div>
 
@@ -1186,15 +1190,16 @@
 
     peer.on('open', peerId => {
       myId = peerId;
+      // Persist the host ID so room survives page reloads
+      if (isHost) localStorage.setItem('vairu-host-id', peerId);
       // Update URL hash without triggering navigation
       history.replaceState(null, '', '#' + peerId);
-      setStatus('connecting', isHost ? 'Waiting for peer…' : 'Connecting…');
 
       if (isHost) {
-        // Host: wait for incoming connection
-        setStatus('connecting', 'Waiting for peer…');
+        setStatus('connecting', 'Waiting for your person… 💌');
       } else {
         // Guest: connect to host
+        setStatus('connecting', 'Joining…');
         connectToPeer(hostId);
       }
     });
@@ -1207,12 +1212,14 @@
     peer.on('error', err => {
       console.warn('PeerJS error:', err.type, err.message);
       if (err.type === 'unavailable-id') {
-        // ID taken, generate new one (shouldn't happen with random IDs)
-        initPeer('vairu-' + generateId());
+        // ID taken (stale session on PeerJS server), generate a fresh one
+        const freshId = 'vairu-' + generateId();
+        if (isHost) localStorage.setItem('vairu-host-id', freshId);
+        initPeer(freshId);
       } else if (err.type === 'peer-unavailable') {
-        setStatus('disconnected', 'Peer not found. Share your link!');
-        showToast('Could not reach peer. Retrying…');
-        setTimeout(() => connectToPeer(hostId), 4000);
+        setStatus('disconnected', 'Waiting for them to come online…');
+        showToast('Not connected yet — will retry 💫');
+        setTimeout(() => connectToPeer(hostId), 5000);
       } else {
         setStatus('disconnected', 'Connection error');
       }
@@ -1223,6 +1230,8 @@
       setTimeout(() => { if (peer && !peer.destroyed) peer.reconnect(); }, 2000);
     });
   }
+
+  let keepAliveInterval = null;
 
   function connectToPeer(targetId) {
     if (!peer || peer.destroyed) return;
@@ -1236,11 +1245,21 @@
     setStatus('connecting', 'Establishing…');
 
     conn.on('open', async () => {
-      setStatus('connected', 'Connected');
-      showToast('Connected!');
-      // Load history for this room (use host's ID as room key)
-      const roomId = isHost ? myId : hostId;
-      await loadHistory(roomId);
+      setStatus('connected', '💕 Connected');
+      showToast('Connected! ✨');
+      // Guest: load history now (using host's ID as room key)
+      if (!isHost) {
+        await loadHistory(hostId);
+      }
+      // Keep-alive pings every 25 s to prevent NAT/idle disconnect
+      clearInterval(keepAliveInterval);
+      keepAliveInterval = setInterval(() => {
+        if (conn && conn.open) {
+          try { conn.send({ event: 'ping' }); } catch (_) {}
+        } else {
+          clearInterval(keepAliveInterval);
+        }
+      }, 25000);
     });
 
     conn.on('data', data => {
@@ -1248,11 +1267,12 @@
     });
 
     conn.on('close', () => {
+      clearInterval(keepAliveInterval);
       setStatus('disconnected', 'Peer disconnected');
       showPeerTyping(false);
-      showToast('Peer disconnected');
+      showToast('Peer disconnected — waiting to reconnect…');
       conn = null;
-      // Try to reconnect if guest
+      // Guest auto-retries; host stays open waiting for new connection
       if (!isHost) {
         setTimeout(() => connectToPeer(hostId), 4000);
       }
@@ -1260,12 +1280,14 @@
 
     conn.on('error', err => {
       console.warn('conn error', err);
+      clearInterval(keepAliveInterval);
       setStatus('disconnected', 'Connection lost');
     });
   }
 
   function handleIncoming(data) {
     if (!data || !data.event) return;
+    if (data.event === 'ping') return; // keep-alive, no-op
     if (data.event === 'message') {
       const msg = { ...data.data, from: 'them' };
       renderMessage(msg, true);
@@ -1288,11 +1310,15 @@
       setStatus('connecting', 'Joining room…');
       initPeer('vairu-' + generateId()); // Guest gets random ID
     } else {
-      // Host: generate ID, set URL hash
+      // Host: reuse saved ID so room and chat history persist across sessions
       isHost = true;
-      const newId = 'vairu-' + generateId();
+      const savedId = localStorage.getItem('vairu-host-id');
+      const useId = savedId || ('vairu-' + generateId());
+      if (!savedId) localStorage.setItem('vairu-host-id', useId);
       setStatus('connecting', 'Initialising…');
-      initPeer(newId);
+      // Load history immediately so old messages appear even before peer connects
+      await loadHistory(useId);
+      initPeer(useId);
     }
   }
 
